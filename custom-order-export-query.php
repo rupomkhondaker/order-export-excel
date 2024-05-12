@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 
-class VPMOrderExport {
+class COEEOrderExport {
 
 	private $vpm_order_export;
 
@@ -18,7 +18,7 @@ class VPMOrderExport {
 		$wp_scripts = wp_scripts();
 		wp_enqueue_script( 'jquery-ui-datepicker' );
 		wp_enqueue_style( 'jquery-ui-css',
-			'http://ajax.googleapis.com/ajax/libs/jqueryui/' . $wp_scripts->registered['jquery-ui-core']->ver . '/themes/overcast/jquery-ui.css',
+			'https://ajax.googleapis.com/ajax/libs/jqueryui/' . $wp_scripts->registered['jquery-ui-core']->ver . '/themes/overcast/jquery-ui.css',
 			false,
 			'1.0.1',
 			false );
@@ -301,5 +301,5 @@ class VPMOrderExport {
 }
 
 if ( is_admin() ) {
-	$vpm_order_export = new VPMOrderExport();
+	$vpm_order_export = new COEEOrderExport();
 }
