@@ -6,15 +6,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class COEEOrderExport {
 
-	private $vpm_order_export;
+	private $coee_order_export;
 
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'vpm_order_export_add_plugin_page' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'order_export_enquee' ) );
-		add_action( 'wp_ajax_viewexportorder', array( $this, 'vpm_view_export_order_data' ) );
+		add_action( 'admin_menu', array( $this, 'coee_order_export_add_plugin_page' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'coee_order_export_enquee' ) );
+		add_action( 'wp_ajax_coee_view_export_order', array( $this, 'coee_view_export_order_data' ) );
 	}
 
-	public function order_export_enquee() {
+	public function coee_order_export_enquee() {
 		$wp_scripts = wp_scripts();
 		wp_enqueue_script( 'jquery-ui-datepicker' );
 		wp_enqueue_style( 'jquery-ui-css',
@@ -24,22 +24,22 @@ class COEEOrderExport {
 			false );
 	}
 
-	public function vpm_order_export_add_plugin_page() {
+	public function coee_order_export_add_plugin_page() {
 
 		add_submenu_page(
 			'exclutips-settings',
 			'Order Export Settings', // page_title
 			'Order Export ', // menu_title
 			'manage_options', // capability
-			'vpm-order-export', // menu_slug
-			array( &$this, 'vpm_order_export_create_admin_page' )
+			'coee-order-export', // menu_slug
+			array( &$this, 'coee_order_export_create_admin_page' )
 		);
 	}
 
-	public function vpm_order_export_create_admin_page() { ?>
+	public function coee_order_export_create_admin_page() { ?>
 
         <div class="wrap catbox-area-admin" style="width: 100%; height:auto;background: #fff;padding: 27px 50px;">
-            <h2>VPM Order Export</h2>
+            <h2>Order Export</h2>
 
             <div style="display:flex;margin-top:30px">
                 <label for="order_from_date">From</label>
@@ -51,11 +51,9 @@ class COEEOrderExport {
 
                 <select id="currency_code" name="currency_code">
 					<?php
-					$currencies = get_woocommerce_currencies();
-					foreach ( $currencies as $code => $details ) {
-						echo "<option value=\"$code\">$code - {$details['symbol']}</option>";
-					}
+					$currency_code  = get_woocommerce_currency();
 					?>
+                    <option value="<?php echo $currency_code;?>"><?php echo $currency_code;?></option>
                 </select>
                 <button id="generate_order" name="generate_order">View Data</button>
                 <button id="exportCSV" class="btn btn-primary align-right" style="display:none;">Export Report</button>
@@ -66,10 +64,15 @@ class COEEOrderExport {
 
             <script>
                 jQuery(document).ready(function ($) {
+                    // Get current date
+                    var currentDate = new Date();
+                    var formattedDate = currentDate.getFullYear() + '-' + ('0' + (currentDate.getMonth() + 1)).slice(-2) + '-' + ('0' + currentDate.getDate()).slice(-2);
+
                     $(".datepicker").datepicker({
                         dateFormat: 'yy-mm-dd',
                         changeMonth: true,
-                        changeYear: true
+                        changeYear: true,
+                        defaultDate: formattedDate
                     });
 
                     $("#exportCSV").click(function () {
@@ -89,13 +92,13 @@ class COEEOrderExport {
 
                         const orderTable = $('#OrderExportResults');
                         const exportBTN = $('#exportCSV');
-
+                        orderTable.html("");
                         $.ajax({
                             type: "post",
                             dataType: "json",
                             url: ajaxurl,
                             data: {
-                                action: 'viewexportorder',
+                                action: 'coee_view_export_order',
                                 order_from_date: order_from_date,
                                 order_to_date: order_to_date,
                                 currency_code: currency_code,
@@ -105,54 +108,60 @@ class COEEOrderExport {
                                 button.html('Please Wait.');
                             },
                             success: function (response) {
-                                console.log(currency_code);
-                                //if(response.status==='200'){
-                                orderTable.html("");
-                                let total_price = 0;
-                                //append response into the table
-                                let orders = '';
-                                orders += '<tr>';
-                                orders += '<th class="remData" width="5%">Id</th>';
-                                orders += '<th class="remData" width="5%">Ordered on</th>';
-                                orders += '<th class="remData" width="5%">Currency</th>';
-                                orders += '<th class="remData" width="50%">Products</th>';
-                                orders += '<th class="remData" width="5%">Tax</th>';
-                                orders += '<th class="remData" width="5%">Paid on</th>';
-                                orders += '<th class="remData" width="10%">Total</th>';
-                                orders += '</tr>';
 
-                                $.each(response.tabledata, function (key, value) {
-                                    // DATA FROM JSON OBJECT
+                                if(parseInt(response.status)===200) {
+
+                                    let total_price = 0;
+                                    //append response into the table
+                                    let orders = '';
                                     orders += '<tr>';
-                                    orders += '<td>' + value.order_id + '</td>';
-                                    orders += '<td>' + value.order_created_on + '</td>';
-                                    orders += '<td>' + value.currency + '</td>';
-                                    orders += '<td>' + value.order_items + '</td>';
-                                    orders += '<td>' + value.order_tax + '</td>';
-                                    orders += '<td>' + value.paid_on + '</td>';
-                                    orders += '<td>' + value.order_total + '</td>';
+                                    orders += '<th class="remData" width="5%">Id</th>';
+                                    orders += '<th class="remData" width="10%">Ordered on</th>';
+                                    orders += '<th class="remData" width="5%">Currency</th>';
+                                    orders += '<th class="remData" width="50%">Products</th>';
+                                    orders += '<th class="remData" width="5%">Tax</th>';
+                                    orders += '<th class="remData" width="5%">Paid on</th>';
+                                    orders += '<th class="remData" width="10%">Total</th>';
                                     orders += '</tr>';
-                                });
-                                //Grand Total
-                                $.each(response.tabledata, function (key, value) {
-                                    total_price += parseFloat(value.order_total);
-                                });
 
-                                orders += '<tr>';
-                                orders += '<td colspan="5"></td>';
-                                orders += '<td>Grand Total</td>';
-                                orders += '<td>' + (total_price).toFixed(2) + '</td>';
-                                orders += '</tr>';
+                                    $.each(response.tabledata, function (key, value) {
+                                        // DATA FROM JSON OBJECT
+                                        orders += '<tr>';
+                                        orders += '<td>' + value.order_id + '</td>';
+                                        orders += '<td>' + value.order_created_on + '</td>';
+                                        orders += '<td>' + value.currency + '</td>';
+                                        orders += '<td>' + value.order_items + '</td>';
+                                        orders += '<td>' + value.order_tax + '</td>';
+                                        orders += '<td>' + value.paid_on + '</td>';
+                                        orders += '<td>' + value.order_total + '</td>';
+                                        orders += '</tr>';
+                                    });
+                                    //Grand Total
+                                    $.each(response.tabledata, function (key, value) {
+                                        total_price += parseFloat(value.order_total);
+                                    });
 
-                                orderTable.append(orders);
+                                    orders += '<tr>';
+                                    orders += '<td colspan="5"></td>';
+                                    orders += '<td>Grand Total</td>';
+                                    orders += '<td>' + (total_price).toFixed(2) + '</td>';
+                                    orders += '</tr>';
 
-                                setTimeout(function () {
-                                    //reload with ajax
+                                    orderTable.append(orders);
+
+                                    setTimeout(function () {
+                                        //reload with ajax
+                                        button.html('View Data');
+                                        orderTable.show();
+                                        exportBTN.show();
+                                    }, 3000);
+                                    //}
+
+                                }else{
+                                    orderTable.append('<tr colspan="7"><td>Data Not Found</td></tr>');
                                     button.html('View Data');
                                     orderTable.show();
-                                    exportBTN.show();
-                                }, 3000);
-                                //}
+                                }
 
                             },
                             error: function (errorThrown) {
@@ -199,7 +208,7 @@ class COEEOrderExport {
 		<?php
 	}
 
-	public function vpm_view_export_order_data() {
+	public function coee_view_export_order_data() {
 
 		// Get the value of the coupon code
 		$currency_code = $_REQUEST['currency_code'];
@@ -241,19 +250,20 @@ class COEEOrderExport {
 						max( CASE WHEN pm.meta_key = '_order_total' and p.ID = pm.post_id THEN pm.meta_value END ) as order_total
 					from
 						$wp_post p 
-						JOIN $wp_postmeta cpm ON p.ID = cpm.post_id
+						JOIN $wp_postmeta cpm ON p.ID = cpm.post_id AND cpm.meta_key = '_order_currency'
 						JOIN $wp_postmeta pm on p.ID = pm.post_id
 						JOIN $wp_woocommerce_order_items oi on p.ID = oi.order_id
 						
 					where
-						post_type = 'shop_order' and
-						post_date BETWEEN DATE '$from_date' AND '$to_date' and
-						cpm.meta_key = '_order_currency' AND
-						post_status = 'wc-completed' AND 
-						cpm.meta_value = '$currency_code'
+						post_type = 'shop_order'
+						AND post_date BETWEEN DATE '$from_date' AND '$to_date'
+						-- AND post_status = 'wc-completed' 
+						AND cpm.meta_value = '$currency_code'
 						
-					group by
-						p.ID
+					GROUP BY
+                        p.ID,
+                        order_created_on,
+                        currency
 				";
 
 				$tabledata = $wpdb->get_results( $prepared_query, OBJECT );
@@ -273,7 +283,7 @@ class COEEOrderExport {
 					$response = array(
 						'status'    => 201,
 						'message'   => 'Failed to generate!',
-						'tabledata' => 'No data found!',
+						'tabledata' => array('0'=>'No data found!'),
 					);
 
 					header( 'Content-Type: application/json' );
@@ -301,5 +311,5 @@ class COEEOrderExport {
 }
 
 if ( is_admin() ) {
-	$vpm_order_export = new COEEOrderExport();
+	$coee_order_export = new COEEOrderExport();
 }
