@@ -50,13 +50,23 @@ class COEEOrderExport {
                 <label for="currency_code">Currency:</label>
 
                 <select id="currency_code" name="currency_code">
-					<?php
-					$currency_code  = get_woocommerce_currency();
-					?>
-                    <option value="<?php echo $currency_code;?>"><?php echo $currency_code;?></option>
+					<?php $currency_code = get_woocommerce_currency(); ?>
+                    <option value="<?php echo $currency_code; ?>"><?php echo $currency_code; ?></option>
                 </select>
-                <button id="generate_order" name="generate_order">View Data</button>
-                <button id="exportCSV" class="btn btn-primary align-right" style="display:none;">Export Report</button>
+
+                <label for="order_status">Order Status:</label>
+                <select id="order_status" name="order_status">
+                    <option value="all">All</option>
+					<?php
+					$statuses = wc_get_order_statuses();
+					foreach ( $statuses as $status_slug => $status_name ) {
+						echo '<option value="' . esc_attr( $status_slug ) . '">' . esc_html( $status_name ) . '</option>';
+					}
+					?>
+                </select>
+
+                <button id="generate_order" name="generate_order" class="button button-secondary margin-right-10">View Data</button>
+                <button id="exportCSV" class="button button-primary align-right" style="display:none;">Export Report</button>
             </div>
 
             <table class="table table-bordered" id="OrderExportResults" style="display:none;" width="85%"></table>
@@ -88,6 +98,7 @@ class COEEOrderExport {
                         const order_from_date = $('#order_from_date').val();
                         const order_to_date = $('#order_to_date').val();
                         const currency_code = $('#currency_code').val();
+                        const order_status = $('#order_status').val();
                         const button = $(this);
 
                         const orderTable = $('#OrderExportResults');
@@ -102,6 +113,7 @@ class COEEOrderExport {
                                 order_from_date: order_from_date,
                                 order_to_date: order_to_date,
                                 currency_code: currency_code,
+                                order_status: order_status,
 
                             },
                             beforeSend: function () {
@@ -109,18 +121,18 @@ class COEEOrderExport {
                             },
                             success: function (response) {
 
-                                if(parseInt(response.status)===200) {
+                                if (parseInt(response.status) === 200) {
 
                                     let total_price = 0;
                                     //append response into the table
                                     let orders = '';
                                     orders += '<tr>';
-                                    orders += '<th class="remData" width="5%">Id</th>';
-                                    orders += '<th class="remData" width="10%">Ordered on</th>';
-                                    orders += '<th class="remData" width="5%">Currency</th>';
+                                    orders += '<th class="remData" width="5%">Order Id</th>';
+                                    orders += '<th class="remData" width="10%">Date</th>';
+                                    orders += '<th class="remData" width="5%">Name</th>';
+                                    orders += '<th class="remData" width="5%">billing_address</th>';
+                                    orders += '<th class="remData" width="5%">phone</th>';
                                     orders += '<th class="remData" width="50%">Products</th>';
-                                    orders += '<th class="remData" width="5%">Tax</th>';
-                                    orders += '<th class="remData" width="5%">Paid on</th>';
                                     orders += '<th class="remData" width="10%">Total</th>';
                                     orders += '</tr>';
 
@@ -129,10 +141,10 @@ class COEEOrderExport {
                                         orders += '<tr>';
                                         orders += '<td>' + value.order_id + '</td>';
                                         orders += '<td>' + value.order_created_on + '</td>';
-                                        orders += '<td>' + value.currency + '</td>';
+                                        orders += '<td>' + value.first_name + '</td>';
+                                        orders += '<td>' + value.billing_address + '</td>';
+                                        orders += '<td>' + value.phone + '</td>';
                                         orders += '<td>' + value.order_items + '</td>';
-                                        orders += '<td>' + value.order_tax + '</td>';
-                                        orders += '<td>' + value.paid_on + '</td>';
                                         orders += '<td>' + value.order_total + '</td>';
                                         orders += '</tr>';
                                     });
@@ -143,22 +155,20 @@ class COEEOrderExport {
 
                                     orders += '<tr>';
                                     orders += '<td colspan="5"></td>';
-                                    orders += '<td>Grand Total</td>';
+                                    orders += '<td><b class="alignright">Grand Total</b></td>';
                                     orders += '<td>' + (total_price).toFixed(2) + '</td>';
                                     orders += '</tr>';
 
                                     orderTable.append(orders);
 
                                     setTimeout(function () {
-                                        //reload with ajax
                                         button.html('View Data');
                                         orderTable.show();
                                         exportBTN.show();
-                                    }, 3000);
-                                    //}
+                                    }, 500);
 
-                                }else{
-                                    orderTable.append('<tr colspan="7"><td>Data Not Found</td></tr>');
+                                } else {
+                                    orderTable.append('<tr colspan="7"><td>'+response.message+'</td></tr>');
                                     button.html('View Data');
                                     orderTable.show();
                                 }
@@ -173,6 +183,11 @@ class COEEOrderExport {
                 });
             </script>
             <style>
+
+                #generate_order {
+                    margin-right: 5px;
+                    margin-left: 5px;
+                }
 
                 table#OrderExportResults {
                     border: 0px solid #000000;
@@ -201,8 +216,6 @@ class COEEOrderExport {
                 table#OrderExportResults tfoot {
                     font-weight: bold;
                 }
-
-
             </style>
         </div>
 		<?php
@@ -212,67 +225,74 @@ class COEEOrderExport {
 
 		// Get the value of the coupon code
 		$currency_code = $_REQUEST['currency_code'];
+		$order_status  = $_REQUEST['order_status'];
 		$from_date     = $_REQUEST['order_from_date'];
 		$to_date       = $_REQUEST['order_to_date'];
 
 
-		// Check coupon code to make sure is not empty
+		// Check Date to make sure is not empty
 		if ( empty( $from_date ) || empty( $to_date ) ) {
-			// Build our response
 			$response = array(
-				'status'  => 'error',
+				'status'    => 201,
 				'message' => 'Please select date range.',
+				'tabledata' => array( '0' => 'Please select Date Range!' ),
 			);
 			header( 'Content-Type: application/json' );
 			echo json_encode( $response );
-			// Always exit when doing ajax
 			exit();
 		} else {
 			// Check coupon to make determine if It's valid or not
 			if ( isset( $from_date ) && isset( $to_date ) ) {
 				global $wpdb;
-				$wp_post                    = $wpdb->prefix . 'posts';
+				$wp_posts                   = $wpdb->prefix . 'posts';
 				$wp_postmeta                = $wpdb->prefix . 'postmeta';
 				$wp_woocommerce_order_items = $wpdb->prefix . 'woocommerce_order_items';
 				$from_date                  = date( $from_date );
 
 				$to_date = date( 'Y-m-d', strtotime( $to_date . " +1 days" ) );
-				//$to_date = date( $to_date );
 
 				$prepared_query = "
-					select
-						p.ID as order_id,
-						DATE(p.post_date) as order_created_on,
-						cpm.meta_value AS currency,
-						 ( select group_concat( order_item_name separator '|' ) from $wp_woocommerce_order_items where order_id = p.ID ) as order_items,
-						max( CASE WHEN pm.meta_key = '_order_tax' and p.ID = pm.post_id THEN pm.meta_value END ) as order_tax,
-						 DATE(max( CASE WHEN pm.meta_key = '_paid_date' and p.ID = pm.post_id THEN pm.meta_value END )) as paid_on,
-						max( CASE WHEN pm.meta_key = '_order_total' and p.ID = pm.post_id THEN pm.meta_value END ) as order_total
-					from
-						$wp_post p 
-						JOIN $wp_postmeta cpm ON p.ID = cpm.post_id AND cpm.meta_key = '_order_currency'
-						JOIN $wp_postmeta pm on p.ID = pm.post_id
-						JOIN $wp_woocommerce_order_items oi on p.ID = oi.order_id
-						
-					where
-						post_type = 'shop_order'
-						AND post_date BETWEEN DATE '$from_date' AND '$to_date'
-						-- AND post_status = 'wc-completed' 
-						AND cpm.meta_value = '$currency_code'
-						
-					GROUP BY
-                        p.ID,
-                        order_created_on,
-                        currency
-				";
+                                    SELECT
+                                        p.ID AS order_id,
+                                        DATE(p.post_date) AS order_created_on,
+                                        cpm.meta_value AS currency,
+                                        (
+                                            SELECT GROUP_CONCAT(order_item_name SEPARATOR '|')
+                                            FROM $wp_woocommerce_order_items
+                                            WHERE order_id = p.ID
+                                        ) AS order_items,
+                                        MAX(CASE WHEN pm.meta_key = '_order_tax' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_tax,
+                                        DATE(MAX(CASE WHEN pm.meta_key = '_paid_date' AND p.ID = pm.post_id THEN pm.meta_value END)) AS paid_on,
+                                        MAX(CASE WHEN pm.meta_key = '_billing_first_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS first_name,
+                                        MAX(CASE WHEN pm.meta_key = '_billing_phone' AND p.ID = pm.post_id THEN pm.meta_value END) AS phone,
+                                        MAX(CASE WHEN pm.meta_key = '_billing_address_1' AND p.ID = pm.post_id THEN pm.meta_value END) AS billing_address,
+                                        MAX(CASE WHEN pm.meta_key = '_order_total' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_total
+                                    FROM
+                                        $wp_posts p
+                                        JOIN $wp_postmeta cpm ON p.ID = cpm.post_id AND cpm.meta_key = '_order_currency'
+                                        JOIN $wp_postmeta pm ON p.ID = pm.post_id
+                                        JOIN $wp_woocommerce_order_items oi ON p.ID = oi.order_id
+                                    WHERE
+                                        p.post_type = 'shop_order'
+                                        AND p.post_date BETWEEN DATE('$from_date') AND DATE('$to_date')
+                                        AND cpm.meta_value = '$currency_code'
+                                        " . ( $order_status !== 'all' ? "AND p.post_status = '$order_status'" : "" ) . "
+                                    GROUP BY
+                                        p.ID,
+                                        order_created_on, 
+                                        currency
+                                ";
 
-				$tabledata = $wpdb->get_results( $prepared_query, OBJECT );
+				// You may need to further sanitize and prepare the variables for security.
+				$prepared_query = $wpdb->prepare( $prepared_query, $from_date, $to_date, $currency_code, $order_status );
 
-				if ( ! empty( $tabledata ) ) {
+				$results_data = $wpdb->get_results( $prepared_query, OBJECT );
+
+				if ( ! empty( $results_data ) ) {
 					$response = array(
 						'status'    => 200,
 						'message'   => 'Successfully generated!',
-						'tabledata' => $tabledata,
+						'tabledata' => $results_data,
 					);
 
 					header( 'Content-Type: application/json' );
@@ -282,8 +302,8 @@ class COEEOrderExport {
 					//if not valid error_message 
 					$response = array(
 						'status'    => 201,
-						'message'   => 'Failed to generate!',
-						'tabledata' => array('0'=>'No data found!'),
+						'message'   => 'Order Not Found!',
+						'tabledata' => array( '0' => 'No data found!.' ),
 					);
 
 					header( 'Content-Type: application/json' );
