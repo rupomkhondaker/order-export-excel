@@ -3,7 +3,7 @@
 Plugin Name:  Custom Order Export Excel
 Plugin URI:   https://exclutips.com
 Description:  Order Export to Excel
-Version:      1.0.1
+Version:      1.0.2
 Author:       Rupom	Khondaker
 Author URI:   #
 License:      GPL2

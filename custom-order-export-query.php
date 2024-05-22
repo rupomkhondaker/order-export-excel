@@ -226,8 +226,7 @@ class COEEOrderExport {
 
 				$to_date = date( 'Y-m-d', strtotime( $to_date . " +1 days" ) );
 
-				$prepared_query = "
-                                    SELECT
+				$prepared_query = "SELECT
                                         p.ID AS order_id,
                                         DATE(p.post_date) AS order_created_on,
                                         cpm.meta_value AS currency,
