@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class COEEOrderExport {
 
-	private $coee_order_export;
+
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'coee_order_export_add_plugin_page' ) );
@@ -75,8 +75,8 @@ class COEEOrderExport {
             <script>
                 jQuery(document).ready(function ($) {
                     // Get current date
-                    var currentDate = new Date();
-                    var formattedDate = currentDate.getFullYear() + '-' + ('0' + (currentDate.getMonth() + 1)).slice(-2) + '-' + ('0' + currentDate.getDate()).slice(-2);
+                    const currentDate = new Date();
+                    const formattedDate = currentDate.getFullYear() + '-' + ('0' + (currentDate.getMonth() + 1)).slice(-2) + '-' + ('0' + currentDate.getDate()).slice(-2);
 
                     $(".datepicker").datepicker({
                         dateFormat: 'yy-mm-dd',
@@ -104,6 +104,7 @@ class COEEOrderExport {
                         const orderTable = $('#OrderExportResults');
                         const exportBTN = $('#exportCSV');
                         orderTable.html("");
+                        exportBTN.hide();
                         $.ajax({
                             type: "post",
                             dataType: "json",
@@ -130,7 +131,7 @@ class COEEOrderExport {
                                     orders += '<th class="remData" width="5%">Order Id</th>';
                                     orders += '<th class="remData" width="10%">Date</th>';
                                     orders += '<th class="remData" width="5%">Name</th>';
-                                    orders += '<th class="remData" width="5%">billing_address</th>';
+                                    orders += '<th class="remData" width="5%">Billing address</th>';
                                     orders += '<th class="remData" width="5%">phone</th>';
                                     orders += '<th class="remData" width="50%">Products</th>';
                                     orders += '<th class="remData" width="10%">Total</th>';
@@ -141,7 +142,7 @@ class COEEOrderExport {
                                         orders += '<tr>';
                                         orders += '<td>' + value.order_id + '</td>';
                                         orders += '<td>' + value.order_created_on + '</td>';
-                                        orders += '<td>' + value.first_name + '</td>';
+                                        orders += '<td>' + value.first_name +' '+ value.last_name +'</td>';
                                         orders += '<td>' + value.billing_address + '</td>';
                                         orders += '<td>' + value.phone + '</td>';
                                         orders += '<td>' + value.order_items + '</td>';
@@ -183,39 +184,13 @@ class COEEOrderExport {
                 });
             </script>
             <style>
-
-                #generate_order {
-                    margin-right: 5px;
-                    margin-left: 5px;
-                }
-
-                table#OrderExportResults {
-                    border: 0px solid #000000;
-                    border-collapse: collapse;
-                    margin: 20px 0;
-                }
-
-                table#OrderExportResults td, table#OrderExportResults th {
-                    border: 1px solid #AAAAAA;
-                    padding: 3px 4px;
-                }
-
-                table#OrderExportResults tbody td {
-                    font-size: 14px;
-                }
-
-                table#OrderExportResults thead {
-                    background: #E1F5FF;
-                }
-
-                table#OrderExportResults thead th {
-                    font-weight: normal;
-                    text-align: center;
-                }
-
-                table#OrderExportResults tfoot {
-                    font-weight: bold;
-                }
+                #generate_order {margin-right: 5px;margin-left: 5px;}
+                table#OrderExportResults {border: 0px solid #000000;border-collapse: collapse;margin: 20px 0;}
+                table#OrderExportResults td, table#OrderExportResults th {border: 1px solid #AAAAAA;padding: 3px 4px;}
+                table#OrderExportResults tbody td { font-size: 14px;}
+                table#OrderExportResults thead { background: #E1F5FF;}
+                table#OrderExportResults thead th {font-weight: normal; text-align: center;}
+                table#OrderExportResults tfoot {font-weight: bold;}
             </style>
         </div>
 		<?php
@@ -264,6 +239,7 @@ class COEEOrderExport {
                                         MAX(CASE WHEN pm.meta_key = '_order_tax' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_tax,
                                         DATE(MAX(CASE WHEN pm.meta_key = '_paid_date' AND p.ID = pm.post_id THEN pm.meta_value END)) AS paid_on,
                                         MAX(CASE WHEN pm.meta_key = '_billing_first_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS first_name,
+                                        MAX(CASE WHEN pm.meta_key = '_billing_last_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS last_name,
                                         MAX(CASE WHEN pm.meta_key = '_billing_phone' AND p.ID = pm.post_id THEN pm.meta_value END) AS phone,
                                         MAX(CASE WHEN pm.meta_key = '_billing_address_1' AND p.ID = pm.post_id THEN pm.meta_value END) AS billing_address,
                                         MAX(CASE WHEN pm.meta_key = '_order_total' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_total
