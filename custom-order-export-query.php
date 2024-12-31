@@ -254,55 +254,48 @@ class COEEOrderExport {
 			$to_date   = date( 'Y-m-d', strtotime( $to_date . " +1 days" ) );
 
 			// Determine if HPOS is enabled
-			$is_hpos_enabled = 'yes' === get_option( 'woocommerce_orders_table_data_store_enabled', 'no' );
-
-			if ( $is_hpos_enabled ) {
-				$wp_posts       = $wpdb->prefix . 'wc_orders';
-				$wp_postmeta    = $wpdb->prefix . 'wc_order_meta';
-				$order_id_field = 'id';
-			} else {
-				$wp_posts       = $wpdb->prefix . 'posts';
-				$wp_postmeta    = $wpdb->prefix . 'postmeta';
-				$order_id_field = 'ID';
-			}
-
+			$wc_orders       = $wpdb->prefix . 'wc_orders';
+            $wc_order_meta    = $wpdb->prefix . 'wc_order_meta';
 			$wp_woocommerce_order_items = $wpdb->prefix . 'woocommerce_order_items';
 
-			$prepared_query = "SELECT
-                                p.$order_id_field AS order_id,
-                                DATE(p.post_date) AS order_created_on,
-                                cpm.meta_value AS currency,
-                                (
-                                    SELECT GROUP_CONCAT(order_item_name SEPARATOR '|')
-                                    FROM $wp_woocommerce_order_items
-                                    WHERE order_id = p.$order_id_field
-                                ) AS order_items,
-                                MAX(CASE WHEN pm.meta_key = '_order_tax' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS order_tax,
-                                DATE(MAX(CASE WHEN pm.meta_key = '_paid_date' AND p.$order_id_field = pm.post_id THEN pm.meta_value END)) AS paid_on,
-                                MAX(CASE WHEN pm.meta_key = '_billing_first_name' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS first_name,
-                                MAX(CASE WHEN pm.meta_key = '_billing_last_name' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS last_name,
-                                MAX(CASE WHEN pm.meta_key = '_billing_phone' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS phone,
-                                MAX(CASE WHEN pm.meta_key = '_billing_address_1' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS billing_address,
-                                p.post_status AS order_status,
-                                MAX(CASE WHEN pm.meta_key = '_customer_note' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS customer_note,
-                                MAX(CASE WHEN pm.meta_key = '_order_total' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS order_total,
-                                MAX(CASE WHEN pm.meta_key = '_admin_note' AND p.$order_id_field = pm.post_id THEN pm.meta_value END) AS admin_note
-                            FROM
-                                $wp_posts p
-                                JOIN $wp_postmeta cpm ON p.$order_id_field = cpm.post_id AND cpm.meta_key = '_order_currency'
-                                JOIN $wp_postmeta pm ON p.$order_id_field = pm.post_id
-                                JOIN $wp_woocommerce_order_items oi ON p.$order_id_field = oi.order_id
-                            WHERE
-                                p.post_type = 'shop_order'
-                                AND p.post_date BETWEEN DATE('$from_date') AND DATE('$to_date')
-                                AND cpm.meta_value = '$currency_code'
-                                " . ( $order_status !== 'all' ? "AND p.post_status = '$order_status'" : "" ) . "
-                            GROUP BY
-                                p.$order_id_field,
-                                order_created_on, 
-                                currency,
-                                order_status
+			$prepared_query = "
+			
+			                    SELECT 
+                                    o.id AS order_id,
+                                    DATE(o.date_created_gmt) AS order_created_on,
+                                    o.status AS order_status,
+                                    o.currency AS currency,
+                                    (
+                                        SELECT GROUP_CONCAT(order_item_name SEPARATOR '|')
+                                        FROM $wp_woocommerce_order_items
+                                        WHERE order_id = o.id
+                                    ) AS order_items,
+                                
+                                    o.total_amount AS order_total,
+                                    o.customer_note AS _customer_note,
+                                    MAX(CASE WHEN onum.meta_key = '_order_number' THEN onum.meta_value END) AS order_number,
+                                    MAX(CASE WHEN address.meta_key = '_billing_address_index' THEN address.meta_value END) AS billing_address
+                                    
+                                FROM $wc_orders AS o 
+                                
+                                LEFT JOIN $wc_order_meta AS om ON o.id = om.order_id
+                                LEFT JOIN $wc_order_meta AS onum ON o.id = onum.order_id
+                                LEFT JOIN $wc_order_meta AS address ON o.id = address.order_id 
+                                
+                                WHERE 
+                                    o.date_created_gmt BETWEEN DATE('$from_date') AND DATE('$to_date')
+                                    AND o.currency = '$currency_code'
+                                    AND o.status = '$order_status'
+                                   " . ( $order_status !== 'all' ? "AND o.status = '$order_status'" : "" ) . "
+                                GROUP BY 
+                                    o.id
+                                    
+                                ORDER BY 
+                                    o.date_created_gmt ASC;
                             ";
+
+
+
 
 			// You may need to further sanitize and prepare the variables for security.
 			$prepared_query = $wpdb->prepare( $prepared_query, $from_date, $to_date, $currency_code, $order_status );
