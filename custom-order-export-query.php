@@ -3,10 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-
 class COEEOrderExport {
-
-
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'coee_order_export_add_plugin_page' ) );
@@ -71,7 +68,6 @@ class COEEOrderExport {
 
             <table class="table table-bordered" id="OrderExportResults" style="display:none;" width="85%"></table>
 
-
             <script>
                 jQuery(document).ready(function ($) {
                     // Get current date
@@ -115,7 +111,6 @@ class COEEOrderExport {
                                 order_to_date: order_to_date,
                                 currency_code: currency_code,
                                 order_status: order_status,
-
                             },
                             beforeSend: function () {
                                 button.html('Please Wait.');
@@ -128,36 +123,42 @@ class COEEOrderExport {
                                     //append response into the table
                                     let orders = '';
                                     orders += '<tr>';
-                                    orders += '<th class="remData" width="5%">Order Id</th>';
-                                    orders += '<th class="remData" width="10%">Date</th>';
+                                    orders += '<th class="remData" width="5%">Invoice</th>';
                                     orders += '<th class="remData" width="5%">Name</th>';
-                                    orders += '<th class="remData" width="5%">Billing address</th>';
-                                    orders += '<th class="remData" width="5%">phone</th>';
-                                    orders += '<th class="remData" width="50%">Products</th>';
-                                    orders += '<th class="remData" width="10%">Total</th>';
+                                    orders += '<th class="remData" width="10%">Address</th>';
+                                    orders += '<th class="remData" width="5%">Phone</th>';
+                                    orders += '<th class="remData" width="25%">Products</th>';
+                                    orders += '<th class="remData" width="15%">Customer Note</th>';
+                                    orders += '<th class="remData" width="15%">Admin Note</th>';
+                                    orders += '<th class="remData" width="10%">Status</th>';
+                                    orders += '<th class="remData" width="10%">Date</th>';
+                                    orders += '<th class="remData" width="10%">Amount</th>';
                                     orders += '</tr>';
 
                                     $.each(response.tabledata, function (key, value) {
-                                        // DATA FROM JSON OBJECT
                                         orders += '<tr>';
                                         orders += '<td>' + value.order_id + '</td>';
-                                        orders += '<td>' + value.order_created_on + '</td>';
-                                        orders += '<td>' + value.first_name +' '+ value.last_name +'</td>';
+                                        orders += '<td>' + value.first_name + ' </td>';
                                         orders += '<td>' + value.billing_address + '</td>';
                                         orders += '<td>' + value.phone + '</td>';
                                         orders += '<td>' + value.order_items + '</td>';
+                                        orders += '<td>' + value.customer_note + '</td>';
+                                        orders += '<td>' + value.admin_note + '</td>';
+                                        orders += '<td>' + value.order_status + '</td>';
+                                        orders += '<td>' + value.order_created_on + '</td>';
                                         orders += '<td>' + value.order_total + '</td>';
                                         orders += '</tr>';
                                     });
+
                                     //Grand Total
                                     $.each(response.tabledata, function (key, value) {
                                         total_price += parseFloat(value.order_total);
                                     });
 
                                     orders += '<tr>';
-                                    orders += '<td colspan="5"></td>';
-                                    orders += '<td><b class="alignright">Grand Total</b></td>';
-                                    orders += '<td>' + (total_price).toFixed(2) + '</td>';
+                                    orders += '<td colspan="8"><b class="alignright">Grand Total</b></td>';
+                                    orders += '<td></td>';
+                                    orders += '<td><strong>' + (total_price).toFixed(2) + '</strong></td>';
                                     orders += '</tr>';
 
                                     orderTable.append(orders);
@@ -169,7 +170,7 @@ class COEEOrderExport {
                                     }, 500);
 
                                 } else {
-                                    orderTable.append('<tr colspan="7"><td>'+response.message+'</td></tr>');
+                                    orderTable.append('<tr colspan="10"><td>' + response.message + '</td></tr>');
                                     button.html('View Data');
                                     orderTable.show();
                                 }
@@ -184,17 +185,46 @@ class COEEOrderExport {
                 });
             </script>
             <style>
-                #generate_order {margin-right: 5px;margin-left: 5px;}
-                table#OrderExportResults {border: 0px solid #000000;border-collapse: collapse;margin: 20px 0;}
-                table#OrderExportResults td, table#OrderExportResults th {border: 1px solid #AAAAAA;padding: 3px 4px;}
-                table#OrderExportResults tbody td { font-size: 14px;}
-                table#OrderExportResults thead { background: #E1F5FF;}
-                table#OrderExportResults thead th {font-weight: normal; text-align: center;}
-                table#OrderExportResults tfoot {font-weight: bold;}
+                #generate_order {
+                    margin-right: 5px;
+                    margin-left: 5px;
+                }
+
+                table#OrderExportResults {
+                    border: 0px solid #000000;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                }
+
+                table#OrderExportResults td, table#OrderExportResults th {
+                    border: 1px solid #AAAAAA;
+                    padding: 3px 4px;
+                }
+
+                table#OrderExportResults tbody td {
+                    font-size: 14px;
+                }
+
+                table#OrderExportResults thead {
+                    background: #E1F5FF;
+                }
+
+                table#OrderExportResults thead th {
+                    font-weight: normal;
+                    text-align: center;
+                }
+
+                table#OrderExportResults tfoot {
+                    font-weight: bold;
+                }
             </style>
         </div>
 		<?php
 	}
+
+	/** ----------------------------------------------------------------
+	High performance Order Export Query
+	----------------------------------------------------------------*/
 
 	public function coee_view_export_order_data() {
 
@@ -204,94 +234,98 @@ class COEEOrderExport {
 		$from_date     = $_REQUEST['order_from_date'];
 		$to_date       = $_REQUEST['order_to_date'];
 
-
 		// Check Date to make sure is not empty
 		if ( empty( $from_date ) || empty( $to_date ) ) {
 			$response = array(
 				'status'    => 201,
-				'message' => 'Please select date range.',
+				'message'   => 'Please select date range.',
 				'tabledata' => array( '0' => 'Please select Date Range!' ),
 			);
 			header( 'Content-Type: application/json' );
 			echo json_encode( $response );
 			exit();
-		} else {
-			// Check coupon to make determine if It's valid or not
-			if ( isset( $from_date ) && isset( $to_date ) ) {
-				global $wpdb;
-				$wp_posts                   = $wpdb->prefix . 'posts';
-				$wp_postmeta                = $wpdb->prefix . 'postmeta';
-				$wp_woocommerce_order_items = $wpdb->prefix . 'woocommerce_order_items';
-				$from_date                  = date( $from_date );
+		}
 
-				$to_date = date( 'Y-m-d', strtotime( $to_date . " +1 days" ) );
+		if ( isset( $currency_code ) && isset( $order_status ) ) {
 
-				$prepared_query = "SELECT
-                                        p.ID AS order_id,
-                                        DATE(p.post_date) AS order_created_on,
-                                        cpm.meta_value AS currency,
-                                        (
-                                            SELECT GROUP_CONCAT(order_item_name SEPARATOR '|')
-                                            FROM $wp_woocommerce_order_items
-                                            WHERE order_id = p.ID
-                                        ) AS order_items,
-                                        MAX(CASE WHEN pm.meta_key = '_order_tax' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_tax,
-                                        DATE(MAX(CASE WHEN pm.meta_key = '_paid_date' AND p.ID = pm.post_id THEN pm.meta_value END)) AS paid_on,
-                                        MAX(CASE WHEN pm.meta_key = '_billing_first_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS first_name,
-                                        MAX(CASE WHEN pm.meta_key = '_billing_last_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS last_name,
-                                        MAX(CASE WHEN pm.meta_key = '_billing_phone' AND p.ID = pm.post_id THEN pm.meta_value END) AS phone,
-                                        MAX(CASE WHEN pm.meta_key = '_billing_address_1' AND p.ID = pm.post_id THEN pm.meta_value END) AS billing_address,
-                                        MAX(CASE WHEN pm.meta_key = '_order_total' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_total
-                                    FROM
-                                        $wp_posts p
-                                        JOIN $wp_postmeta cpm ON p.ID = cpm.post_id AND cpm.meta_key = '_order_currency'
-                                        JOIN $wp_postmeta pm ON p.ID = pm.post_id
-                                        JOIN $wp_woocommerce_order_items oi ON p.ID = oi.order_id
-                                    WHERE
-                                        p.post_type = 'shop_order'
-                                        AND p.post_date BETWEEN DATE('$from_date') AND DATE('$to_date')
-                                        AND cpm.meta_value = '$currency_code'
-                                        " . ( $order_status !== 'all' ? "AND p.post_status = '$order_status'" : "" ) . "
-                                    GROUP BY
-                                        p.ID,
-                                        order_created_on, 
-                                        currency
-                                ";
+			global $wpdb;
 
-				// You may need to further sanitize and prepare the variables for security.
-				$prepared_query = $wpdb->prepare( $prepared_query, $from_date, $to_date, $currency_code, $order_status );
+			$wp_posts                   = $wpdb->prefix . 'posts';
+			$wp_postmeta                = $wpdb->prefix . 'postmeta';
+			$wp_woocommerce_order_items = $wpdb->prefix . 'woocommerce_order_items';
+			$from_date                  = date( $from_date );
 
-				$results_data = $wpdb->get_results( $prepared_query, OBJECT );
+			$to_date = date( 'Y-m-d', strtotime( $to_date . " +1 days" ) );
 
-				if ( ! empty( $results_data ) ) {
-					$response = array(
-						'status'    => 200,
-						'message'   => 'Successfully generated!',
-						'tabledata' => $results_data,
-					);
+			// Determine if HPOS is enabled
+			$is_hpos_enabled = 'yes' === get_option('woocommerce_orders_table_data_store_enabled', 'no');
 
-					header( 'Content-Type: application/json' );
-					echo json_encode( $response );
-					exit();
-				} else {
-					//if not valid error_message 
-					$response = array(
-						'status'    => 201,
-						'message'   => 'Order Not Found!',
-						'tabledata' => array( '0' => 'No data found!.' ),
-					);
-
-					header( 'Content-Type: application/json' );
-					echo json_encode( $response );
-					exit();
-				}
-
-
+			if ($is_hpos_enabled) {
+				$orders_table = $wpdb->prefix . 'wc_orders';
+				$meta_table = $wpdb->prefix . 'wc_order_meta';
+				$order_id_field = 'id';
 			} else {
-				//if not valid error_message 
+				$orders_table = $wpdb->prefix . 'posts';
+				$meta_table = $wpdb->prefix . 'postmeta';
+				$order_id_field = 'ID';
+			}
+
+			$prepared_query = "SELECT
+                                p.ID AS order_id,
+                                DATE(p.post_date) AS order_created_on,
+                                cpm.meta_value AS currency,
+                                (
+                                    SELECT GROUP_CONCAT(order_item_name SEPARATOR '|')
+                                    FROM $wp_woocommerce_order_items
+                                    WHERE order_id = p.ID
+                                ) AS order_items,
+                                MAX(CASE WHEN pm.meta_key = '_order_tax' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_tax,
+                                DATE(MAX(CASE WHEN pm.meta_key = '_paid_date' AND p.ID = pm.post_id THEN pm.meta_value END)) AS paid_on,
+                                MAX(CASE WHEN pm.meta_key = '_billing_first_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS first_name,
+                                MAX(CASE WHEN pm.meta_key = '_billing_last_name' AND p.ID = pm.post_id THEN pm.meta_value END) AS last_name,
+                                MAX(CASE WHEN pm.meta_key = '_billing_phone' AND p.ID = pm.post_id THEN pm.meta_value END) AS phone,
+                                MAX(CASE WHEN pm.meta_key = '_billing_address_1' AND p.ID = pm.post_id THEN pm.meta_value END) AS billing_address,
+                                p.post_status AS order_status,
+                                MAX(CASE WHEN pm.meta_key = '_customer_note' AND p.ID = pm.post_id THEN pm.meta_value END) AS customer_note,
+                                MAX(CASE WHEN pm.meta_key = '_order_total' AND p.ID = pm.post_id THEN pm.meta_value END) AS order_total,
+                                MAX(CASE WHEN pm.meta_key = '_admin_note' AND p.ID = pm.post_id THEN pm.meta_value END) AS admin_note
+                            FROM
+                                $wp_posts p
+                                JOIN $wp_postmeta cpm ON p.ID = cpm.post_id AND cpm.meta_key = '_order_currency'
+                                JOIN $wp_postmeta pm ON p.ID = pm.post_id
+                                JOIN $wp_woocommerce_order_items oi ON p.ID = oi.order_id
+                            WHERE
+                                p.post_type = 'shop_order'
+                                AND p.post_date BETWEEN DATE('$from_date') AND DATE('$to_date')
+                                AND cpm.meta_value = '$currency_code'
+                                " . ( $order_status !== 'all' ? "AND p.post_status = '$order_status'" : "" ) . "
+                            GROUP BY
+                                p.ID,
+                                order_created_on, 
+                                currency,
+                                order_status
+                            ";
+
+			// You may need to further sanitize and prepare the variables for security.
+			$prepared_query = $wpdb->prepare( $prepared_query, $from_date, $to_date, $currency_code, $order_status );
+			$results_data = $wpdb->get_results( $prepared_query, OBJECT );
+
+			if ( ! empty( $results_data ) ) {
 				$response = array(
-					'status'  => 'error',
-					'message' => 'error_message',
+					'status'    => 200,
+					'message'   => 'Successfully generated!',
+					'tabledata' => $results_data,
+				);
+
+				header( 'Content-Type: application/json' );
+				echo json_encode( $response );
+				exit();
+			} else {
+				//if not valid error_message
+				$response = array(
+					'status'    => 201,
+					'message'   => 'Order Not Found!',
+					'tabledata' => array( '0' => 'No data found!.' ),
 				);
 
 				header( 'Content-Type: application/json' );
@@ -299,6 +333,16 @@ class COEEOrderExport {
 				exit();
 			}
 
+		} else {
+			//if not valid error_message
+			$response = array(
+				'status'  => 'error',
+				'message' => 'error_message',
+			);
+
+			header( 'Content-Type: application/json' );
+			echo json_encode( $response );
+			exit();
 		}
 
 	}
@@ -308,3 +352,4 @@ class COEEOrderExport {
 if ( is_admin() ) {
 	$coee_order_export = new COEEOrderExport();
 }
+?>
